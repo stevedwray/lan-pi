@@ -1,0 +1,5 @@
+---
+docker_data_root:        /data/docker/
+host_docker_path: /data/docker
+
+

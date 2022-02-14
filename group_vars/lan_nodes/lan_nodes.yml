@@ -1,0 +1,19 @@
+---
+resolvconf_dns: 192.168.1.1
+dockervolumes_path: /data/docker/volumes
+
+ntp_servers: "time.cloudflare.com,time1.google.com,time2.google.com,time3.google.com,time4.google.com"
+
+dnscryptproxy_port: 5054
+dnscryptproxy_gateway: gateway
+dnscryptproxy_resolvers:
+  - '1.1.1.1:53'
+  - '1.0.0.1:53'
+dnscryptproxy_netprobe: 9.9.9.9:53
+
+pihole_adminemail: stevedwray@gmail.com
+pihole_dns: 127.0.0.1#{{dnscryptproxy_port}}
+pihole_domain: lan.local
+pihole_serverip: 192.168.1.13
+pihole_interface: eth0
+pihole_virtualhost: four8g01.lan.local

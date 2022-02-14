@@ -1,0 +1,10 @@
+---
+all:
+  children:
+    lan_nodes:
+      hosts:
+        four8g01:
+    portainer_nodes:
+      hosts:
+        four8g01:
+

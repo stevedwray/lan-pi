@@ -1,0 +1,4 @@
+---
+docker_data_root:        /media/ssd01/docker/
+host_docker_path: /media/ssd01/docker
+

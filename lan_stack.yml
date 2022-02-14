@@ -1,0 +1,90 @@
+---
+- hosts: lan_nodes
+  become: true
+  tasks:
+    - name: change resolved.conf DNS=
+      lineinfile:
+        dest: /etc/systemd/resolved.conf
+        regexp: '^#DNS=$'
+        line: "DNS={{resolvconf_dns}}"
+        state: present
+    - name: change resolved.conf DNSStubListener=
+      lineinfile:
+        dest: /etc/systemd/resolved.conf
+        regexp: '^#DNSStubListener=yes$'
+        line: "DNSStubListener=no"
+        state: present
+    - name: change resolv.conf symlink
+      file:
+        src: /run/systemd/resolve/resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        owner: systemd-resolve
+        group: systemd-resolve
+        
+    - name: Put dnscrypt-proxy config in place
+      template:
+        src: dnscryptproxy/dnscrypt-proxy.toml.j2
+        dest: "{{docker_data_root}}/volumes/dnscrypt-proxy/etc-dnscrypt-proxy/dnscrypt-proxy.toml"
+        owner: root
+        group: root
+        mode: 0644
+        
+    - name: Create lan stack
+      docker_compose:
+        project_name: lan_stack
+        state: present
+        recreate: always
+        definition:
+          version: '3.6'
+          services:
+            ntp:
+              restart: always
+              image: cturra/ntp:latest
+              ports:
+                - 123:123/udp
+              tmpfs:
+                - /etc/chrony:rw,mode=1750
+                - /run/chrony:rw,mode=1750
+                - /var/lib/chrony:rw,mode=1750
+              environment:
+                - NTP_SERVERS={{ntp_servers}}
+                
+            dnscrypt-proxy:
+              restart: always
+              image: gists/dnscrypt-proxy
+              ports:
+                - "{{dnscryptproxy_port}}:{{dnscryptproxy_port}}/tcp"
+                - "{{dnscryptproxy_port}}:{{dnscryptproxy_port}}/udp"
+              environment:
+                - LOCAL_PORT={{dnscryptproxy_port}}
+              volumes:
+                - "{{docker_data_root}}/volumes/dnscrypt-proxy/etc-dnscrypt-proxy:/etc/dnscrypt-proxy:rw"
+                
+            pihole:
+              restart: always
+              image: pihole/pihole:latest
+              network_mode: host
+              cap_add:
+                - CAP_NET_BIND_SERVICE
+                - CAP_NET_RAW
+                - NET_ADMIN
+              environment:
+                - ADMIN_EMAIL={{pihole_adminemail}}
+                - WEBPASSWORD={{vault_pihole_webpassword}}
+                - BLOCKING_ENABLED=true
+                - CACHE_SIZE=9999
+                - DNSMASQ_LISTENING=single
+                - PIHOLE_DNS_={{pihole_dns}}
+                - DNS_FQDN_REQUIRED=true
+                - PIHOLE_DOMAIN={{pihole_domain}}
+                - QUERY_LOGGING=true
+                - DNSSEC=true
+                - DNS_BOGUS_PRIV=false
+                - CONDITIONAL_FORWARDING=false
+                - ServerIP={{pihole_serverip}}
+                - INTERFACE={{pihole_interface}}
+                - VIRTUAL_HOST={{pihole_virtualhost}}
+              volumes:
+                - "{{docker_data_root}}/volumes/pihole/etc-pihole:/etc/pihole:rw"
+                - "{{docker_data_root}}/volumes/pihole/etc-dnsmasq.d/:/etc/dnsmasq.d/"
